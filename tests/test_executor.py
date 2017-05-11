@@ -626,10 +626,11 @@ class TestPostgresBackupExecutor(object):
         assert executor.strategy
         assert server.config.disabled
 
+            
     @patch(
         "barman.backup_executor.PostgresBackupExecutor.backup_copy")
     @patch("barman.backup.BackupManager.get_previous_backup")
-    def test_backup(self, gpb_mock, pbc_mock, capsys, tmpdir):
+    def test_backup_suppress_include_warning(self, gpb_mock, pbc_mock, capsys, tmpdir):
         """
         Test backup
 
@@ -641,7 +642,8 @@ class TestPostgresBackupExecutor(object):
         tmp_home = tmpdir.mkdir('home')
         backup_manager = build_backup_manager(global_conf={
             'barman_home': tmp_home.strpath,
-            'backup_method': 'postgres'
+            'backup_method': 'postgres',
+            'suppress_include_file_warning': True,
         })
         backup_info = build_test_backup_info(
             backup_id='fake_backup_id',
@@ -675,11 +677,71 @@ class TestPostgresBackupExecutor(object):
         backup_manager.executor.backup(backup_info)
         out, err = capsys.readouterr()
         gpb_mock.assert_called_once_with(backup_info.backup_id)
-        assert err.strip() == 'WARNING: pg_basebackup does not copy ' \
-                              'the PostgreSQL configuration files that '\
-                              'reside outside PGDATA. ' \
-                              'Please manually backup the following files:' \
-                              '\n\t/pg/pg_ident.conf'
+        assert err == ''
+        assert 'Copying files.' in out
+        assert 'Copy done.' in out
+        assert 'Finalising the backup.' in out
+        assert backup_info.end_xlog == '0/12000090'
+        assert backup_info.end_offset == 144
+        assert backup_info.begin_time == start_time
+        assert backup_info.begin_wal == '000000010000000000000040'
+
+        # Check the CommandFailedException re raising
+        with pytest.raises(CommandFailedException):
+            pbc_mock.side_effect = CommandFailedException('test')
+            backup_manager.executor.backup(backup_info)
+            
+    @patch(
+        "barman.backup_executor.PostgresBackupExecutor.backup_copy")
+    @patch("barman.backup.BackupManager.get_previous_backup")
+    def test_backup_suppress_include_warning(self, gpb_mock, pbc_mock, capsys, tmpdir):
+        """
+        Test backup
+
+        :param gpb_mock: mock for the get_previous_backup method
+        :param pbc_mock: mock for the backup_copy method
+        :param capsys: stdout capture module
+        :param tmpdir: pytest temp directory
+        """
+        tmp_home = tmpdir.mkdir('home')
+        backup_manager = build_backup_manager(global_conf={
+            'barman_home': tmp_home.strpath,
+            'backup_method': 'postgres',
+            'suppress_include_file_warning': True,
+        })
+        backup_info = build_test_backup_info(
+            backup_id='fake_backup_id',
+            server=backup_manager.server,
+            pgdata="/pg/data",
+            config_file="/pg/data/postgresql.conf",
+            hba_file="/pg/data/pg_hba.conf",
+            ident_file="/pg/pg_ident.conf",
+            begin_offset=28)
+        timestamp = datetime.datetime(2015, 10, 26, 14, 38)
+        backup_manager.server.postgres.current_xlog_info = dict(
+            location='0/12000090',
+            file_name='000000010000000000000012',
+            file_offset=144,
+            timestamp=timestamp,
+        )
+        backup_manager.server.postgres.get_setting.return_value = '/pg/data'
+        tmp_backup_label = tmp_home.mkdir('main')\
+            .mkdir('base').mkdir('fake_backup_id')\
+            .mkdir('data').join('backup_label')
+        start_time = datetime.datetime.now(tz.tzlocal()).replace(microsecond=0)
+        tmp_backup_label.write(
+            'START WAL LOCATION: 0/40000028 (file 000000010000000000000040)\n'
+            'CHECKPOINT LOCATION: 0/40000028\n'
+            'BACKUP METHOD: streamed\n'
+            'BACKUP FROM: master\n'
+            'START TIME: %s\n'
+            'LABEL: pg_basebackup base backup' %
+            start_time.strftime('%Y-%m-%d %H:%M:%S %Z')
+        )
+        backup_manager.executor.backup(backup_info)
+        out, err = capsys.readouterr()
+        gpb_mock.assert_called_once_with(backup_info.backup_id)
+        assert err == ''
         assert 'Copying files.' in out
         assert 'Copy done.' in out
         assert 'Finalising the backup.' in out

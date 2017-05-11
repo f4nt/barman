@@ -128,7 +128,8 @@ class TestConfig(object):
             'custom_compression_filter': 'bzip2 -c -9',
             'wals_directory': 'wals',
             'custom_decompression_filter': 'bzip2 -c -d',
-            'backup_method': 'rsync'
+            'backup_method': 'rsync',
+            'suppress_include_file_warning': False,
         })
         assert main.__dict__ == expected
 

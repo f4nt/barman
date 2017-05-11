@@ -1008,7 +1008,7 @@ class RsyncBackupExecutor(SshBackupExecutor):
         # Currently, include directives are not supported for files that
         # reside outside PGDATA. These files must be manually backed up.
         # Barman will emit a warning and list those files
-        if any(included_config_files):
+        if any(included_config_files) and not self.config.suppress_include_file_warning:
             output.warning(
                 "The usage of include directives is not supported "
                 "for files that reside outside PGDATA.\n"
@@ -1305,7 +1305,7 @@ class PostgresBackupStrategy(BackupStrategy):
 
         # Check for the presence of configuration files outside the PGDATA
         external_config = backup_info.get_external_config_files()
-        if any(external_config):
+        if any(external_config) and not self.executor.config.suppress_include_file_warning:
             output.warning("pg_basebackup does not copy the PostgreSQL "
                            "configuration files that reside outside PGDATA. "
                            "Please manually backup the following files:\n"

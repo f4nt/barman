@@ -165,6 +165,11 @@ def backup_completer(prefix, parsed_args, **kwargs):
      dest='immediate_checkpoint',
      action='store_true',
      default=SUPPRESS)
+@arg('--suppress-include-file-warning',
+     help='suppresses include file outside of PGDATA warning',
+     dest='suppress_include_file_warning',
+     action='store_true',
+     default=SUPPRESS)
 @arg('--no-immediate-checkpoint',
      help='forces the initial checkpoint to be spreaded',
      dest='immediate_checkpoint',
@@ -207,6 +212,8 @@ def backup(args):
             server.config.basebackup_retry_times = args.retry_times
         if hasattr(args, 'immediate_checkpoint'):
             server.config.immediate_checkpoint = args.immediate_checkpoint
+        if hasattr(args, 'suppress_include_file_warning'):
+            server.config.suppress_include_file_warning = args.suppress_include_file_warning
         if args.jobs is not None:
             server.config.parallel_jobs = args.jobs
         with closing(server):

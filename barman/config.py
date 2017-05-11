@@ -311,6 +311,7 @@ class ServerConfig(object):
         'streaming_backup_name',
         'streaming_conninfo',
         'streaming_wals_directory',
+        'suppress_include_file_warning',
         'tablespace_bandwidth_limit',
         'wal_retention_policy',
         'wals_directory'
@@ -352,6 +353,7 @@ class ServerConfig(object):
         'streaming_archiver_batch_size',
         'streaming_archiver_name',
         'streaming_backup_name',
+        'suppress_include_file_warning',
         'tablespace_bandwidth_limit',
         'wal_retention_policy'
     ]
@@ -382,6 +384,7 @@ class ServerConfig(object):
         'streaming_backup_name': 'barman_streaming_backup',
         'streaming_conninfo': '%(conninfo)s',
         'streaming_wals_directory': '%(backup_directory)s/streaming',
+        'suppress_include_file_warning': 'false',
         'wal_retention_policy': 'main',
         'wals_directory': '%(backup_directory)s/wals'
     }
@@ -408,6 +411,7 @@ class ServerConfig(object):
         'reuse_backup': parse_reuse_backup,
         'streaming_archiver': parse_boolean,
         'streaming_archiver_batch_size': int,
+        'suppress_include_file_warning': parse_boolean,
     }
 
     def invoke_parser(self, key, source, value, new_value):
